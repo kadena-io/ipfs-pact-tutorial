@@ -1,0 +1,60 @@
+(env-keys ["adminkey"])
+
+;; Add keysets
+(env-data { "admin-keyset":{
+             "keys": ["adminkey"]
+             },
+             "sender-keyset": {
+               "keys": ["senderkey"]
+             }
+           })
+(begin-tx)
+(load "ipfsinbox.pact")
+(commit-tx)
+
+(typecheck "ipfs-inbox")
+
+(begin-tx)
+
+;; Set transaction keys with "adminkey"
+(env-keys ["adminkey"])
+(use ipfs-inbox)
+
+(expect-failure "Should fail because senderkey is not in the transaction"
+                (send-ipfs-address "address0" "ipfsHash0"
+                (read-keyset 'sender-keyset)))
+
+;; Set transaction keys with "senderkey"
+(env-keys ["senderkey"])
+
+(expect "Row with hash is created for the first time"
+        {"ipfs-address":"ipfsHash0" "address":"address0"}
+        (send-ipfs-address "address0" "ipfsHash0" (read-keyset 'sender-keyset)) )
+(expect "Row is updated with a different hash"
+        {"ipfs-address":"ipfsHash1" "address":"address0"}
+        (send-ipfs-address "address0" "ipfsHash1" (read-keyset 'sender-keyset)) )
+(expect-failure "Address can not be empty"
+ (send-ipfs-address "" "ipfsHash1" (read-keyset 'sender-keyset)))
+(expect-failure "ipfs-address cannot be empty."
+ (send-ipfs-address "address0" "" (read-keyset 'sender-keyset)))
+(commit-tx)
+
+(begin-tx)
+(use ipfs-inbox)
+(env-keys ["someoneelse"])
+
+(expect-failure "Not signed with the senderkey" (check-inbox "address0"))
+
+(env-keys [ "senderkey"])
+
+(expect "Inbox returns the hash"
+        {"ipfs-address":"ipfsHash1" "address":"address0"}
+        (check-inbox "address0"))
+
+(expect-failure "Inbox is emptied after a lookup"
+        (check-inbox "address0"))
+
+(expect-failure "Address does not exist in the table"
+        (check-inbox "address1"))
+
+(commit-tx)

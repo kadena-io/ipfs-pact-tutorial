@@ -8,19 +8,37 @@ import { Container, Row, Col, Alert } from "reactstrap";
 class App extends Component {
   state = {
     ipfsHash: "",
-    alertVisible: false
+    receiverAddress: "",
+    alertVisible: false,
+    receivedIPFShash: {}
   };
 
+  /**
+   * sendIPFSResult() updates state on async sendIPFSHash() function call
+   */
   sendIPFSResult = result => {
     this.setState({ sendIPFSRequestResult: result });
   };
 
-  createIpfsInboxResult = result => {
-    this.setState({ createIpfsInboxRequestResult: result });
-  };
-
+  /**
+   * checkIPFSInboxResult() updates state on async checkInbox() function call
+   * If transaction fail then based on returned string message state
+   * is updating to inform user.
+   */
   checkIPFSInboxResult = result => {
-    this.setState({ receivedIPFShash: result });
+    if (result.message) {
+      if (result.message.includes("Inbox is Empty")) {
+        this.setState({ receivedIPFShash: { Message: "Inbox is Empty" } });
+      } else {
+        if (result.message.includes("row not found")) {
+          this.setState({ receivedIPFShash: { Message: "Address not found" } });
+        } else {
+          this.setState({ receivedIPFShash: { Error: result.message } });
+        }
+      }
+    } else {
+      this.setState({ receivedIPFShash: result });
+    }
   };
 
   convertToBuffer = async reader => {
@@ -51,23 +69,33 @@ class App extends Component {
   handleSend = event => {
     event.preventDefault();
 
-    const ipfsHash = event.target.ipfsHash.value;
-    const address = event.target.address.value;
     this.setState({
-      showNotification: true,
-      ipfsHash: ipfsHash,
-      address: address
+      showNotification: true
     });
-    sendIPFSHash(address, ipfsHash, "BDT", this.sendIPFSResult);
+    sendIPFSHash(
+      this.state.address,
+      this.state.ipfsAddress,
+      this.sendIPFSResult
+    );
     this.onDismiss();
   };
 
-  checkIPFSInbox = () => {
-    checkInbox(this.state.address, this.checkIPFSInboxResult);
+  checkIPFSInbox = event => {
+    event.preventDefault();
+    checkInbox(this.state.receiverAddress, this.checkIPFSInboxResult);
   };
 
   handleAddressInput = event => {
     this.setState({ address: event.target.value });
+  };
+
+  handleReceiverAddressInput = event => {
+    this.setState({ receiverAddress: event.target.value });
+  };
+
+  handleIPFSAddressInput = event => {
+    event.preventDefault();
+    this.setState({ ipfsAddress: event.target.value });
   };
 
   onDismiss = () => {
@@ -133,6 +161,7 @@ class App extends Component {
                   <Col sm="7">
                     <input
                       id="address"
+                      required="required"
                       className="form-control"
                       style={{ width: "100%" }}
                       type="text"
@@ -148,9 +177,11 @@ class App extends Component {
                   <Col sm="7">
                     <input
                       id="ipfsHash"
+                      required="required"
                       className="form-control"
                       style={{ width: "100%" }}
                       type="text"
+                      onChange={this.handleIPFSAddressInput}
                     />
                   </Col>
                   <Col sm="3" />
@@ -178,18 +209,58 @@ class App extends Component {
           </Col>
         </Row>
 
-        <Row className="mt-5">
+        <Row className="mt-5 mb-2">
           <Col>
             <Row>
               <h2>3. Receive notifications</h2>
             </Row>
             <Row className="mt-2">
-              <button className="btn btn-success" onClick={this.checkIPFSInbox}>
-                Receive IPFS
-              </button>
+              <form
+                className="form-group"
+                onSubmit={this.checkIPFSInbox}
+                style={{ width: "100%" }}
+              >
+                <Row className="mb-2">
+                  <Col sm="2">
+                    <label>Receiver Address:</label>
+                  </Col>
+                  <Col sm="7">
+                    <input
+                      id="receiverAddress"
+                      className="form-control"
+                      style={{ width: "100%" }}
+                      type="text"
+                      value={this.state.receiverAddress}
+                      onChange={this.handleReceiverAddressInput}
+                    />
+                  </Col>
+                  <Col sm="3" />
+                </Row>
+                <Row>
+                  <Col sm="7" />
+                  <Col sm="2">
+                    <input
+                      style={{ float: "right" }}
+                      type="submit"
+                      value="Receive IPFS"
+                      className="form-control btn-success"
+                      onSubmit={this.checkIPFSInbox}
+                    />
+                  </Col>
+                  <Col sm="3" />
+                </Row>
+              </form>
             </Row>
-            <Row className="mt-3">
-              <h5>{this.state.receivedIPFShash}</h5>
+            <Row className="mt-2">
+              <h5>
+                {Object.keys(this.state.receivedIPFShash).map(key => {
+                  return (
+                    <p key={key}>
+                      <strong>{key}:</strong> {this.state.receivedIPFShash[key]}
+                    </p>
+                  );
+                })}
+              </h5>
             </Row>
           </Col>
         </Row>

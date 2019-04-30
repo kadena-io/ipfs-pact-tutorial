@@ -5,7 +5,7 @@ const KEY_PAIR = {
   secretKey: "8693e641ae2bbe9ea802c736f42027b03f86afe63cae315e7169c9c496c17332"
 };
 const hostAddress = "http://localhost:8081";
-const PACT_MODULE = "IPFSInbox";
+const PACT_MODULE = "ipfs-inbox";
 const pactCommandBody = {
   command: "(- 0 1)",
   data: {
@@ -16,28 +16,21 @@ const pactCommandBody = {
   keyPairs: KEY_PAIR
 };
 
-export const createIpfsInbox = (
-  receiverAddress,
-  ipfsAddress,
-  senderAddress,
-  senderKeyset = '(read-keyset "admin-keyset")'
-) => {
-  pactCommandBody.command = `(${PACT_MODULE}.create-ipfs-address "${receiverAddress}" "${ipfsAddress}" "${senderAddress}" ${senderKeyset})`;
-  Pact.sendCommand(pactCommandBody);
-};
-
 export const sendIPFSHash = (
   receiverAddress,
   ipfsAddress,
-  senderAddress,
   callback,
   senderKeyset = '(read-keyset "admin-keyset")'
 ) => {
-  pactCommandBody.command = `(${PACT_MODULE}.send-ipfs-hash "${receiverAddress}" "${ipfsAddress}" "${senderAddress}" ${senderKeyset})`;
-  Pact.sendCommand(pactCommandBody).then(re => callback(re));
+  pactCommandBody.command = `(${PACT_MODULE}.send-ipfs-address "${receiverAddress}" "${ipfsAddress}" ${senderKeyset})`;
+  Pact.sendCommand(pactCommandBody)
+    .then(re => callback(re))
+    .catch(error => callback(error));
 };
 
 export const checkInbox = (address, callback) => {
   pactCommandBody.command = `(${PACT_MODULE}.check-inbox "${address}")`;
-  Pact.sendCommand(pactCommandBody).then(re => callback(re));
+  Pact.sendCommand(pactCommandBody)
+    .then(re => callback(re))
+    .catch(error => callback(error));
 };
